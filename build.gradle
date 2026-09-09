@@ -85,6 +85,9 @@ dependencies {
 	// SSH tunnel for local Redis (default profile only; not prod/test)
 	implementation 'com.github.mwiede:jsch:0.2.17'
 
+	// Email (비밀번호 재설정 메일 발송)
+	implementation 'org.springframework.boot:spring-boot-starter-mail'
+
 }
 
 tasks.named('test') {

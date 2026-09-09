@@ -60,5 +60,6 @@ auth:
       - https://hj.walab.info
 
 app:
+  frontend-url: ${FRONTEND_URL:https://hcl.walab.info}
   ssh-tunnel:
     enabled: false
