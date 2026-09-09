@@ -165,6 +165,18 @@ public class UserService {
     }
 
     /**
+     * 비밀번호 재설정 (새 비밀번호로 변경)
+     */
+    @Transactional
+    public void updatePassword(Long userId, String newRawPassword) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        user.setPassword(passwordEncoder.encode(newRawPassword));
+        userRepository.save(user);
+        log.info("비밀번호 변경 완료: userId={}", userId);
+    }
+
+    /**
      * 🔥 로그인한 사용자의 대시보드에 보여줄 과목들 조회
      * @param instructorOnly true면 내가 강사인 분반만 반환 (튜터 페이지용), false면 강사 분반 + 수강 중인 분반
      */

@@ -1,6 +1,7 @@
 package com.project.handongjudge.auth.controller;
 
 import com.project.handongjudge.auth.service.AuthService;
+import com.project.handongjudge.auth.service.PasswordResetService;
 import com.project.handongjudge.auth.util.AuthCookieUtil;
 import com.project.handongjudge.auth.util.JwtUtil;
 import com.project.handongjudge.auth.dto.AuthRequestDto;
@@ -37,6 +38,7 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final UserService userService;
     private final AuthCookieUtil authCookieUtil;
+    private final PasswordResetService passwordResetService;
 
     /**
      * 일반 로그인 API
@@ -188,14 +190,42 @@ public class AuthController {
         }
     }
 
+    /**
+     * 비밀번호 재설정 이메일 발송 API
+     * 이메일로 사용자 조회 후 재설정 링크 발송 (15분 유효)
+     */
     @PostMapping("/forgot-password")
-    public ResponseEntity<Map<String, Object>> forgotPassword(@RequestBody Map<String, String> request) {
-        return createErrorResponse("비밀번호 재설정 기능이 아직 구현되지 않았습니다.");
+    public ResponseEntity<Map<String, Object>> forgotPassword(
+            @Valid @RequestBody AuthRequestDto.ForgotPasswordRequest request) {
+        try {
+            passwordResetService.requestPasswordReset(request.getEmail());
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "비밀번호 재설정 링크를 이메일로 발송했습니다. 15분 이내에 확인해주세요.");
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("비밀번호 재설정 요청 실패: email={}", request.getEmail(), e);
+            return createErrorResponse(e.getMessage());
+        }
     }
 
+    /**
+     * 비밀번호 재설정 처리 API
+     * 토큰 검증 후 새 비밀번호로 변경
+     */
     @PostMapping("/reset-password")
-    public ResponseEntity<Map<String, Object>> resetPassword(@RequestBody Map<String, String> request) {
-        return createErrorResponse("비밀번호 재설정 기능이 아직 구현되지 않았습니다.");
+    public ResponseEntity<Map<String, Object>> resetPassword(
+            @Valid @RequestBody AuthRequestDto.ResetPasswordRequest request) {
+        try {
+            passwordResetService.resetPassword(request.getToken(), request.getNewPassword());
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "비밀번호가 성공적으로 변경되었습니다. 새 비밀번호로 로그인해주세요.");
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            log.error("비밀번호 재설정 실패: token={}", request.getToken(), e);
+            return createErrorResponse(e.getMessage());
+        }
     }
 
     @GetMapping("/oauth2/google")
