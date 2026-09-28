@@ -71,7 +71,12 @@ public class ProblemFileToDomjudgeConverter {
     private static String createProblemYaml(String title, String timeLimit, String memoryLimit,
                                             boolean strictWhitespaceGrading) {
         StringBuilder sb = new StringBuilder();
-        sb.append("name: ").append(title).append("\n");
+        String safeTitle = (title != null ? title : "Untitled")
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\r", "")
+                .replace("\n", " ");
+        sb.append("name: \"").append(safeTitle).append("\"\n");
         sb.append("author: HandongJudge\n");
         sb.append("source: HandongJudge\n");
         sb.append("limits:\n");
