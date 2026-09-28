@@ -1159,7 +1159,7 @@ public class ProblemService {
                     throw new IllegalArgumentException("기존 Domjudge 문제 ID가 없습니다. 문제를 먼저 생성해야 합니다.");
                 }
 
-                // 2) 문제가 연결된 모든 Contest(Section) 찾기 (업데이트 전에 미리 찾기)
+                // 2) 문제가 연결된 모든 Contest(Section) 찾기 (과제 + 퀴즈, 업데이트 전에 미리 찾기)
                 List<com.project.handongjudge.assignment.entity.AssignmentProblem> assignmentProblems = 
                         assignmentProblemRepository.findByProblemId(problemId);
                 
@@ -1170,7 +1170,15 @@ public class ProblemService {
                     }
                 }
 
-                log.info("문제가 연결된 Contest 수: {}", contestIds.size());
+                List<com.project.handongjudge.quiz.entity.QuizProblem> quizProblems = 
+                        quizProblemRepository.findByProblemId(problemId);
+                for (com.project.handongjudge.quiz.entity.QuizProblem qp : quizProblems) {
+                    if (qp.getQuiz() != null && qp.getQuiz().getSection() != null) {
+                        contestIds.add(qp.getQuiz().getSection().getId());
+                    }
+                }
+
+                log.info("문제가 연결된 Contest 수 (과제+퀴즈): {}", contestIds.size());
 
                 // 고유한 externalid 생성: "과제ID-문제ID-타임스탬프" 형식
                 Long assignmentId = null;
