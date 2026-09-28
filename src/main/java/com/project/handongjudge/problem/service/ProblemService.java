@@ -306,7 +306,12 @@ public class ProblemService {
      */
     private String createProblemYaml(String title, String timeLimit, String memoryLimit, boolean strictWhitespaceGrading) {
         StringBuilder yaml = new StringBuilder();
-        yaml.append("name: ").append(title).append("\n");
+        String safeTitle = (title != null ? title : "Untitled")
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\r", "")
+                .replace("\n", " ");
+        yaml.append("name: \"").append(safeTitle).append("\"\n");
         yaml.append("author: HandongJudge\n");
         yaml.append("source: HandongJudge\n");
         yaml.append("limits:\n");
