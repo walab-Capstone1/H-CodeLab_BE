@@ -365,4 +365,32 @@ public class SectionController {
         }
     }
 
+    /**
+     * 수업에서 수강생 퇴출 (수강 취소 / 삭제)
+     * 교수(ADMIN) 또는 튜터(TUTOR) 권한 필요
+     */
+    @DeleteMapping("/{sectionId}/students/{userId}")
+    public ResponseEntity<Map<String, Object>> expelStudent(
+            @PathVariable Long sectionId,
+            @PathVariable Long userId,
+            Authentication authentication) {
+        try {
+            Long operatorUserId = Long.parseLong(authentication.getName());
+            sectionRoleService.expelStudentFromSection(sectionId, userId, operatorUserId);
+            
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "학생이 수업에서 퇴출되었습니다."
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("success", false, "message", e.getMessage())
+            );
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                    Map.of("success", false, "message", "서버 오류가 발생했습니다.")
+            );
+        }
+    }
+
 }

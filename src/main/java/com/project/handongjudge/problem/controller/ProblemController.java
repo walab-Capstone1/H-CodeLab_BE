@@ -39,11 +39,12 @@ public class ProblemController {
     public ResponseEntity<ProblemResponse> getProblem(@PathVariable Long problemId) {
         return ResponseEntity.ok(problemService.getProblem(problemId));
     }
-    // ProblemController.java에 추가
     @GetMapping
-    public ResponseEntity<List<ProblemResponse>> getAllProblems(Authentication authentication) {
+    public ResponseEntity<List<ProblemResponse>> getAllProblems(
+            @RequestParam(value = "myOnly", required = false, defaultValue = "false") Boolean myOnly,
+            Authentication authentication) {
         Long instructorId = Long.parseLong(authentication.getName());
-        return ResponseEntity.ok(problemService.getAllProblems(instructorId));
+        return ResponseEntity.ok(problemService.getAllProblems(instructorId, myOnly));
     }
     @PostMapping("/{problemId}/copy")
     public ResponseEntity<Long> copyProblem(
