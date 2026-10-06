@@ -9,12 +9,15 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.data.repository.CrudRepository;
 import com.project.handongjudge.user.entity.User;
 import java.util.List;
+import java.util.Optional;
 
 public interface EnrollmentRepository extends CrudRepository<Enrollment, Long> {
 
-    // EnrollmentRepository.java - 학생용 대시보드 쿼리도 수정
+    List<Enrollment> findAllByUserIdAndSectionId(Long userId, Long sectionId);
 
+    Optional<Enrollment> findByUserIdAndSectionId(Long userId, Long sectionId);
 
+    void deleteByUserIdAndSectionId(Long userId, Long sectionId);
 
     @Query("SELECT e.teamId FROM Enrollment e WHERE e.user.id = :userId AND e.section.id = :sectionId")
     String findTeamIdByUserIdAndSectionId(@Param("userId") Long userId, @Param("sectionId") Long sectionId);

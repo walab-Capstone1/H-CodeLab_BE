@@ -4,7 +4,9 @@ import com.project.handongjudge.section.entity.Section;
 import com.project.handongjudge.section.entity.SectionUserRole;
 import com.project.handongjudge.section.repository.SectionRepository;
 import com.project.handongjudge.section.repository.SectionUserRoleRepository;
+import com.project.handongjudge.user.entity.Enrollment;
 import com.project.handongjudge.user.entity.User;
+import com.project.handongjudge.user.repository.EnrollmentRepository;
 import com.project.handongjudge.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +28,7 @@ public class SectionRoleService {
     private final SectionUserRoleRepository sectionUserRoleRepository;
     private final SectionRepository sectionRepository;
     private final UserRepository userRepository;
+    private final EnrollmentRepository enrollmentRepository;
 
     /**
      * 특정 수업에서 사용자의 역할 조회
@@ -314,5 +317,61 @@ public class SectionRoleService {
     public List<SectionUserRole> getAdmins(Long sectionId) {
         return sectionUserRoleRepository.findAdminsBySectionId(sectionId);
     }
+
+    /**
+     * 수업에서 수강생 퇴출 (Enrollment 및 SectionUserRole 완전 삭제)
+     * 교수(ADMIN) 또는 튜터(TUTOR), 시스템 관리자(SUPER_ADMIN)만 수행 가능
+     * 튜터는 수강생만 퇴출할 수 있음
+     * @param sectionId 수업 ID
+     * @param targetUserId 퇴출 대상 사용자 ID
+     * @param operatorUserId 요청자 사용자 ID
+     */
+    @Transactional
+    public void expelStudentFromSection(Long sectionId, Long targetUserId, Long operatorUserId) {
+        // 1. 요청자 권한 체크: ADMIN, TUTOR 또는 SUPER_ADMIN
+        boolean isOperatorManager = isManager(operatorUserId, sectionId);
+        User operator = userRepository.findById(operatorUserId)
+                .orElseThrow(() -> new IllegalArgumentException("요청자를 찾을 수 없습니다: " + operatorUserId));
+        boolean isSuperAdmin = operator.getRole() == User.Role.SUPER_ADMIN;
+
+        if (!isOperatorManager && !isSuperAdmin) {
+            throw new IllegalArgumentException("학생을 퇴출할 권한이 없습니다.");
+        }
+
+        // 2. 대상자 역할 확인
+        Optional<SectionUserRole.SectionRole> targetRoleOpt = getUserRoleInSection(targetUserId, sectionId);
+        SectionUserRole.SectionRole targetRole = targetRoleOpt.orElse(SectionUserRole.SectionRole.STUDENT);
+
+        // 3. ADMIN(교수/관리자)은 퇴출 불가
+        if (targetRole == SectionUserRole.SectionRole.ADMIN) {
+            throw new IllegalArgumentException("교수(관리자)는 수업에서 퇴출할 수 없습니다.");
+        }
+
+        // 4. 요청자가 TUTOR인 경우, 수강생(STUDENT)만 퇴출 가능 (다른 튜터 퇴출 불가)
+        boolean isOperatorAdmin = isAdmin(operatorUserId, sectionId) || isSuperAdmin;
+        if (!isOperatorAdmin && targetRole != SectionUserRole.SectionRole.STUDENT) {
+            throw new IllegalArgumentException("튜터는 수강생만 퇴출할 수 있습니다.");
+        }
+
+        // 5. Enrollment 레코드 삭제 (중복 등록 레코드도 일괄 삭제)
+        List<Enrollment> enrollments = enrollmentRepository.findAllByUserIdAndSectionId(targetUserId, sectionId);
+        if (!enrollments.isEmpty()) {
+            enrollmentRepository.deleteAll(enrollments);
+            log.info("수업 퇴출 - Enrollment 삭제 완료 (총 {}건) - sectionId: {}, targetUserId: {}", 
+                    enrollments.size(), sectionId, targetUserId);
+        }
+
+        // 6. SectionUserRole 레코드 삭제
+        Optional<SectionUserRole> roleOpt = sectionUserRoleRepository.findBySectionIdAndUserId(sectionId, targetUserId);
+        if (roleOpt.isPresent()) {
+            sectionUserRoleRepository.delete(roleOpt.get());
+            log.info("수업 퇴출 - SectionUserRole 삭제 완료 - sectionId: {}, targetUserId: {}", 
+                    sectionId, targetUserId);
+        }
+
+        log.info("수업 퇴출 처리 완료 - sectionId: {}, targetUserId: {}, operatorUserId: {}", 
+                sectionId, targetUserId, operatorUserId);
+    }
 }
+
 

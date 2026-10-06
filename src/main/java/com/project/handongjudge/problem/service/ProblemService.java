@@ -222,6 +222,15 @@ public class ProblemService {
      */
     private String buildFullDescription(String description, String inputFormat,
                                         String outputFormat, List<Map<String, String>> sampleInputs) {
+        if (description == null) {
+            description = "";
+        }
+
+        // 프론트엔드 등에서 이미 전체 마크다운(## 입력 형식 등)으로 결합하여 보낸 경우 중복 추가 방지
+        if (description.contains("## 입력 형식")) {
+            return ProblemFileUtil.stripDuplicateInputOutputExample(description);
+        }
+
         StringBuilder sb = new StringBuilder(description);
 
         if (inputFormat != null && !inputFormat.trim().isEmpty()) {
@@ -248,7 +257,7 @@ public class ProblemService {
             }
         }
 
-        return sb.toString();
+        return ProblemFileUtil.stripDuplicateInputOutputExample(sb.toString());
     }
 
     /**
@@ -389,6 +398,8 @@ public class ProblemService {
                 .problemSetCount(problemSetCount)
                 .quizCount(quizCount)
                 .createdAt(problem.getCreatedAt())
+                .createdById(problem.getCreatedBy() != null ? problem.getCreatedBy().getId() : null)
+                .createdByName(problem.getCreatedBy() != null ? problem.getCreatedBy().getName() : null)
                 .build();
     }
 
@@ -409,30 +420,36 @@ public class ProblemService {
                 .memoryLimit(problem.getMemoryLimit())
                 .strictWhitespaceGrading(Boolean.TRUE.equals(problem.getStrictWhitespaceGrading()))
                 .createdAt(problem.getCreatedAt())
+                .createdById(problem.getCreatedBy() != null ? problem.getCreatedBy().getId() : null)
+                .createdByName(problem.getCreatedBy() != null ? problem.getCreatedBy().getName() : null)
                 .build();
     }
 
     public void addProblem(Long problemId, Long assignmentId, Long instructorId) {
         assignmentProblemService.addProblemToAssignment(assignmentId, problemId, instructorId);
     }
-    // ProblemService.java에 추가
-    public List<ProblemResponse> getAllProblems(Long instructorId) {
+
+    public List<ProblemResponse> getAllProblems(Long instructorId, Boolean myOnly) {
         // 사용자 조회
         User user = userRepository.findById(instructorId)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + instructorId));
 
         List<Problem> problems;
-        // 시스템 관리자는 모든 문제 조회 가능
-        if (user.getRole() == User.Role.SUPER_ADMIN) {
-            problems = problemRepository.findAll();
-        } else {
-            // 일반 교수는 자신이 만든 문제만 조회
+        // myOnly가 true이거나 일반 사용자/교수인 경우 자신이 만든 문제만 조회
+        if (Boolean.TRUE.equals(myOnly) || user.getRole() != User.Role.SUPER_ADMIN) {
             problems = problemRepository.findByCreatedBy_Id(instructorId);
+        } else {
+            // 시스템 관리자가 myOnly가 아닐 때만 모든 문제 조회
+            problems = problemRepository.findAll();
         }
         
         return problems.stream()
                 .map(this::convertToProblemResponse)
                 .collect(Collectors.toList());
+    }
+
+    public List<ProblemResponse> getAllProblems(Long instructorId) {
+        return getAllProblems(instructorId, false);
     }
 
 
